@@ -247,6 +247,8 @@ private struct ReminderDetailView: View {
         VStack(spacing: 0) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
+                    noteView
+
                     if let image = ImageStore.loadImage(relativePath: reminder.imagePath) {
                         Image(nsImage: image)
                             .resizable()
@@ -255,8 +257,6 @@ private struct ReminderDetailView: View {
                             .clipShape(RoundedRectangle(cornerRadius: 8))
                             .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.secondary.opacity(0.2)))
                     }
-
-                    noteView
 
                     infoGrid
                 }
@@ -279,59 +279,59 @@ private struct ReminderDetailView: View {
     }
 
     private var actionBar: some View {
-        HStack(spacing: 8) {
-            if reminder.url != nil {
-                Button {
-                    reopen()
-                } label: {
-                    Label("Reopen", systemImage: "arrow.up.forward.app")
-                }
-                .buttonStyle(.shadcn(.primary, fillWidth: true))
-            }
+        VStack(spacing: 8) {
             if reminder.status == .inProgress {
-                Button {
-                    startReschedule()
-                } label: {
-                    Label("Remind later", systemImage: "clock")
+                HStack(spacing: 8) {
+                    Button {
+                        startReschedule()
+                    } label: {
+                        Label("Remind later", systemImage: "clock")
+                    }
+                    .buttonStyle(.shadcn(.secondary, fillWidth: true))
+                    .popover(isPresented: $showReschedule, arrowEdge: .top) {
+                        reschedulePopover
+                    }
+                    Button {
+                        markCompleted()
+                    } label: {
+                        Label("Complete", systemImage: "checkmark.circle")
+                    }
+                    .buttonStyle(.shadcn(.secondary, fillWidth: true))
                 }
-                .buttonStyle(.shadcn(.secondary, fillWidth: true))
-                .popover(isPresented: $showReschedule, arrowEdge: .top) {
-                    reschedulePopover
+                HStack(spacing: 8) {
+                    Button {
+                        archive()
+                    } label: {
+                        Label("Archive", systemImage: "archivebox")
+                    }
+                    .buttonStyle(.shadcn(.outline, fillWidth: true))
+                    Button(action: onDelete) {
+                        Label("Delete", systemImage: "trash")
+                    }
+                    .buttonStyle(.shadcn(.outline, fillWidth: true))
                 }
-                Button {
-                    markCompleted()
-                } label: {
-                    Label("Complete", systemImage: "checkmark.circle")
-                }
-                .buttonStyle(.shadcn(.secondary, fillWidth: true))
-                Button {
-                    archive()
-                } label: {
-                    Label("Archive", systemImage: "archivebox")
-                }
-                .buttonStyle(.shadcn(.outline, fillWidth: true))
             } else {
-                Button {
-                    reopenReminder()
-                } label: {
-                    Label("Move to In progress", systemImage: "arrow.uturn.backward")
+                HStack(spacing: 8) {
+                    Button {
+                        reopenReminder()
+                    } label: {
+                        Label("Move to In progress", systemImage: "arrow.uturn.backward")
+                    }
+                    .buttonStyle(.shadcn(.secondary, fillWidth: true))
+                    Button(action: onDelete) {
+                        Label("Delete", systemImage: "trash")
+                    }
+                    .buttonStyle(.shadcn(.outline, fillWidth: true))
                 }
-                .buttonStyle(.shadcn(.secondary, fillWidth: true))
             }
-            Button(action: onDelete) {
-                Label("Delete", systemImage: "trash")
-            }
-            .buttonStyle(.shadcn(.outline, fillWidth: true))
         }
     }
 
     private var infoGrid: some View {
         VStack(alignment: .leading, spacing: 6) {
-            row("Status", reminder.status.label)
-            row("Fires", reminder.fireDate.formatted(date: .abbreviated, time: .shortened))
-            if let app = reminder.sourceApp { row("App", app) }
+            if let app = reminder.sourceApp { appRow("App", app) }
             if let title = reminder.windowTitle { row("Window", title) }
-            if let url = reminder.url { row("URL", url.absoluteString) }
+            if let url = reminder.url { urlRow("URL", url) }
             row("Captured", reminder.createdAt.formatted(date: .abbreviated, time: .shortened))
         }
         .padding(12)
@@ -354,9 +354,45 @@ private struct ReminderDetailView: View {
         }
     }
 
-    private func reopen() {
-        if let url = reminder.url {
-            NSWorkspace.shared.open(url)
+    private func appRow(_ label: String, _ appName: String) -> some View {
+        HStack(alignment: .top) {
+            Text(label)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .frame(width: 70, alignment: .leading)
+            Text(appName)
+                .font(.caption)
+                .lineLimit(1)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+                .onTapGesture { openApp(appName) }
+                .pointingHandOnHover()
+                .help("Open \(appName)")
+        }
+    }
+
+    private func openApp(_ name: String) {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/open")
+        process.arguments = ["-a", name]
+        try? process.run()
+    }
+
+    private func urlRow(_ label: String, _ url: URL) -> some View {
+        HStack(alignment: .top) {
+            Text(label)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .frame(width: 70, alignment: .leading)
+            Text(url.absoluteString)
+                .font(.caption)
+                .lineLimit(3)
+                .multilineTextAlignment(.leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+                .onTapGesture { NSWorkspace.shared.open(url) }
+                .pointingHandOnHover()
+                .help("Open in browser")
         }
     }
 
@@ -431,6 +467,20 @@ private struct ReminderDetailView: View {
         NotificationScheduler.cancel(reminder)
         if reminder.fireDate > Date() {
             NotificationScheduler.schedule(reminder)
+        }
+    }
+}
+
+private extension View {
+    /// Shows a pointing-hand (finger) cursor while hovering, hinting that the
+    /// view is clickable without changing its appearance.
+    func pointingHandOnHover() -> some View {
+        onHover { inside in
+            if inside {
+                NSCursor.pointingHand.push()
+            } else {
+                NSCursor.pop()
+            }
         }
     }
 }

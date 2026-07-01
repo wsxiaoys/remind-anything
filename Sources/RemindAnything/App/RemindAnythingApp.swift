@@ -10,7 +10,7 @@ struct RemindAnythingApp: App {
         }
         .menuBarExtraStyle(.menu)
 
-        Window("Library", id: "library") {
+        Window("Reminders", id: "library") {
             LibraryView()
                 .modelContainer(Store.shared)
         }

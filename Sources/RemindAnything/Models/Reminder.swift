@@ -88,9 +88,6 @@ extension Reminder {
         if !note.isEmpty { return note }
         if let title = pageTitle?.trimmed, !title.isEmpty { return title }
         if let title = windowTitle?.trimmed, !title.isEmpty {
-            if let app = sourceApp?.trimmed, !app.isEmpty {
-                return "\(title) — \(app)"
-            }
             return title
         }
         if let app = sourceApp?.trimmed, !app.isEmpty { return "Capture from \(app)" }

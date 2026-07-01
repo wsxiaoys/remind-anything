@@ -11,7 +11,7 @@ struct MenuContent: View {
             openWindow(id: "preferences")
             NSApp.activate(ignoringOtherApps: true)
         } label: {
-            Label("Preferences…", systemImage: "gearshape")
+            Label("Preferences", systemImage: "gearshape")
         }
         .keyboardShortcut(",", modifiers: .command)
 
@@ -30,7 +30,7 @@ struct MenuContent: View {
             openWindow(id: "library")
             NSApp.activate(ignoringOtherApps: true)
         } label: {
-            Label("Open Library…", systemImage: "square.grid.2x2")
+            Label("Reminders", systemImage: "square.grid.2x2")
         }
 
         Divider()
