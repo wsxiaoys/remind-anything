@@ -28,13 +28,8 @@ commits. The outcome is each feedback item verified by the user and committed
 - Then **collect feedback interactively with `askFollowupQuestion`** rather than
   passively waiting — ask the user what they want to change, offering concrete
   options (e.g. new bug, UI tweak, "everything works", or paste a list).
-- **Recording feedback is a separate phase from implementing. While collecting
-  feedback: do NOT read code and do NOT make any code changes.** Just transcribe
-  the user's report clearly and fluently into `feedback.md` (problem, impact,
-  and — only if the user gave one — a suggested direction). Keep gathering items
-  until the user signals they're done.
-- Defer ALL code investigation and implementation to Step 2, and only begin once
-  the user asks you to address the recorded items.
+- **CRITICAL: Recording feedback is a strictly isolated phase from implementing or researching. While collecting/recording feedback, you MUST NOT read code, search files, investigate the codebase, or make any code changes. Your sole task is to transcribe the user's report clearly and fluently into `feedback.md` (problem, impact, and — only if the user gave one — a suggested direction). Keep gathering items until the user explicitly signals they're done and asks you to start addressing them.**
+- Defer ALL code investigation, searching, and implementation to Step 2, and only begin once the user asks you to address the recorded items.
 
 ### Step 1: Enumerate the feedback
 - Read the feedback document in full. Extract a numbered list of concrete items,
