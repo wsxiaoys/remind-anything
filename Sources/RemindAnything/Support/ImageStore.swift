@@ -75,6 +75,18 @@ enum ImageStore {
     static func png(from cgImage: CGImage) -> NSImage {
         NSImage(cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
     }
+
+    /// Copies an image to the general pasteboard so it can be pasted elsewhere,
+    /// mirroring the behavior of the macOS screenshot tool. Writes both PNG data
+    /// (preferred by most apps) and the `NSImage` representation.
+    static func copyToPasteboard(_ image: NSImage) {
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        if let data = pngData(from: image) {
+            pasteboard.setData(data, forType: .png)
+        }
+        pasteboard.writeObjects([image])
+    }
 }
 
 enum CaptureError: LocalizedError {

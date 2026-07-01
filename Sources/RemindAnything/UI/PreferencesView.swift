@@ -96,6 +96,15 @@ struct PreferencesView: View {
                     .labelsHidden()
                     .toggleStyle(.switch)
             }
+            Divider()
+            SettingRow(
+                title: "Copy screenshots to clipboard",
+                description: "Also copy every capture to the clipboard so you can paste it anywhere."
+            ) {
+                Toggle("", isOn: $settings.copyScreenshotToClipboard)
+                    .labelsHidden()
+                    .toggleStyle(.switch)
+            }
         }
     }
 

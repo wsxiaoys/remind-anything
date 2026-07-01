@@ -48,6 +48,11 @@ final class CaptureCoordinator: ObservableObject {
                 result = try await engine.captureRegion(rect)
             }
 
+            // Copy to the clipboard so the app doubles as a screenshot tool.
+            if AppSettings.shared.copyScreenshotToClipboard {
+                ImageStore.copyToPasteboard(result.image)
+            }
+
             presentCompose(image: result.image, context: context)
         } catch {
             presentError(error.localizedDescription)
