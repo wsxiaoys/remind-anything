@@ -95,8 +95,8 @@ enum NotificationScheduler {
     /// Re-register all reminders that should still fire (call at launch).
     static func reconcile(pending reminders: [Reminder]) {
         let now = Date()
-        for reminder in reminders where reminder.status == .scheduled || reminder.status == .snoozed {
-            if reminder.effectiveFireDate > now {
+        for reminder in reminders where reminder.status == .inProgress {
+            if reminder.fireDate > now {
                 schedule(reminder)
             }
         }
@@ -105,7 +105,7 @@ enum NotificationScheduler {
     // MARK: - Triggers
 
     private static func makeTrigger(for reminder: Reminder) -> UNNotificationTrigger? {
-        let fireDate = reminder.effectiveFireDate
+        let fireDate = reminder.fireDate
 
         switch reminder.scheduleKind {
         case .relative:

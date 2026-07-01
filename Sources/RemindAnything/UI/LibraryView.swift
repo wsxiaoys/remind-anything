@@ -8,12 +8,12 @@ struct LibraryView: View {
     @Query(sort: \Reminder.createdAt, order: .reverse) private var reminders: [Reminder]
 
     @State private var searchText = ""
-    @State private var statusFilter: ReminderStatus? = nil
+    @State private var statusFilter: ReminderStatus = .inProgress
     @State private var selection: Reminder.ID?
 
     private var filtered: [Reminder] {
         reminders.filter { reminder in
-            let matchesStatus = statusFilter == nil || reminder.status == statusFilter
+            let matchesStatus = reminder.status == statusFilter
             let matchesSearch = searchText.isEmpty
                 || reminder.note.localizedCaseInsensitiveContains(searchText)
                 || (reminder.url?.absoluteString.localizedCaseInsensitiveContains(searchText) ?? false)
@@ -21,6 +21,10 @@ struct LibraryView: View {
                 || (reminder.windowTitle?.localizedCaseInsensitiveContains(searchText) ?? false)
             return matchesStatus && matchesSearch
         }
+    }
+
+    private func count(for status: ReminderStatus) -> Int {
+        reminders.reduce(into: 0) { $0 += ($1.status == status ? 1 : 0) }
     }
 
     var body: some View {
@@ -36,7 +40,7 @@ struct LibraryView: View {
 
     private var sidebar: some View {
         VStack(spacing: 0) {
-            filterBar
+            tabBar
             Divider()
             if filtered.isEmpty {
                 emptyState
@@ -52,30 +56,55 @@ struct LibraryView: View {
         .searchable(text: $searchText, placement: .sidebar, prompt: "Search notes, URLs, apps")
     }
 
-    private var filterBar: some View {
-        Picker("Filter", selection: $statusFilter) {
-            Text("All").tag(ReminderStatus?.none)
+    private var tabBar: some View {
+        HStack(spacing: 4) {
             ForEach(ReminderStatus.allCases) { status in
-                Text(status.label).tag(ReminderStatus?.some(status))
+                TabButton(
+                    title: status.label,
+                    count: count(for: status),
+                    isSelected: statusFilter == status
+                ) {
+                    statusFilter = status
+                    selection = nil
+                }
             }
+            Spacer(minLength: 0)
         }
-        .pickerStyle(.segmented)
-        .labelsHidden()
-        .padding(8)
+        .padding(.horizontal, 12)
+        .padding(.top, 8)
     }
 
+    @ViewBuilder
     private var emptyState: some View {
         VStack(spacing: 8) {
-            Image(systemName: "bell.slash")
+            Image(systemName: emptyStateIcon)
                 .font(.largeTitle)
                 .foregroundStyle(.secondary)
-            Text("No reminders yet")
+            Text(emptyStateTitle)
                 .foregroundStyle(.secondary)
-            Text("Press ⌥⇧2 to capture a region.")
-                .font(.caption)
-                .foregroundStyle(.tertiary)
+            if statusFilter == .inProgress {
+                Text("Press ⌥⇧2 to capture a region.")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var emptyStateIcon: String {
+        switch statusFilter {
+        case .inProgress: return "bell.slash"
+        case .archived:   return "archivebox"
+        case .completed:  return "checkmark.circle"
+        }
+    }
+
+    private var emptyStateTitle: String {
+        switch statusFilter {
+        case .inProgress: return "Nothing in progress"
+        case .archived:   return "Nothing archived"
+        case .completed:  return "Nothing completed yet"
+        }
     }
 
     // MARK: - Detail
@@ -107,23 +136,49 @@ private struct ReminderRow: View {
     let reminder: Reminder
 
     var body: some View {
-        HStack(spacing: 10) {
-            thumbnail
-            VStack(alignment: .leading, spacing: 2) {
-                Text(reminder.displayTitle)
-                    .lineLimit(1)
-                    .font(.body)
-                    .foregroundStyle(reminder.hasNote ? AnyShapeStyle(.primary) : AnyShapeStyle(.secondary))
-                Text(reminder.contextSummary)
+        VStack(alignment: .leading, spacing: 4) {
+            if let due = dueLine {
+                Text(due.text)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(due.color)
                     .lineLimit(1)
             }
-            Spacer()
-            StatusBadge(status: reminder.status)
+            HStack(spacing: 10) {
+                thumbnail
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(reminder.displayTitle)
+                        .lineLimit(1)
+                        .font(.body)
+                        .foregroundStyle(reminder.hasNote ? AnyShapeStyle(.primary) : AnyShapeStyle(.secondary))
+                    Text(reminder.contextSummary)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+                Spacer()
+            }
         }
-        .padding(.vertical, 2)
+        .padding(.vertical, 4)
     }
+
+    /// Slack-style relative due line, e.g. "Due in 19 minutes" (or overdue).
+    /// Shown only for in-progress reminders — under Archived/Completed the
+    /// due time is no longer meaningful.
+    private var dueLine: (text: String, color: Color)? {
+        guard reminder.status == .inProgress else { return nil }
+        let rel = Self.relativeFormatter.localizedString(for: reminder.fireDate, relativeTo: Date())
+        let isOverdue = reminder.fireDate < Date()
+        // Kept intentionally understated: a muted secondary tone for upcoming
+        // reminders, a soft orange only when something is actually overdue.
+        return ("Due \(rel)", isOverdue ? .orange : .secondary)
+    }
+
+    private static let relativeFormatter: RelativeDateTimeFormatter = {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .full
+        return formatter
+    }()
 
     private var thumbnail: some View {
         Group {
@@ -140,26 +195,37 @@ private struct ReminderRow: View {
     }
 }
 
-private struct StatusBadge: View {
-    let status: ReminderStatus
+// MARK: - Slack-style tab
+
+private struct TabButton: View {
+    let title: String
+    let count: Int
+    let isSelected: Bool
+    let action: () -> Void
 
     var body: some View {
-        Text(status.label)
-            .font(.caption2)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 2)
-            .background(color.opacity(0.18))
-            .foregroundStyle(color)
-            .clipShape(Capsule())
-    }
-
-    private var color: Color {
-        switch status {
-        case .scheduled: return .blue
-        case .snoozed:   return .orange
-        case .fired:     return .purple
-        case .done:      return .green
+        Button(action: action) {
+            VStack(spacing: 6) {
+                HStack(spacing: 6) {
+                    Text(title)
+                        .font(.subheadline)
+                        .fontWeight(isSelected ? .semibold : .regular)
+                        .foregroundStyle(isSelected ? AnyShapeStyle(.primary) : AnyShapeStyle(.secondary))
+                    if count > 0 {
+                        Text("\(count)")
+                            .font(.caption2)
+                            .fontWeight(.semibold)
+                            .foregroundStyle(isSelected ? AnyShapeStyle(Color.accentColor) : AnyShapeStyle(.secondary))
+                    }
+                }
+                Rectangle()
+                    .fill(isSelected ? Color.accentColor : .clear)
+                    .frame(height: 2)
+                    .clipShape(Capsule())
+            }
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
     }
 }
 
@@ -169,6 +235,13 @@ private struct ReminderDetailView: View {
     @Environment(\.modelContext) private var context
     @Bindable var reminder: Reminder
     let onDelete: () -> Void
+
+    // Reschedule editor state — mirrors the create-flow schedule inputs so the
+    // library reuses the exact same picker component.
+    @State private var showReschedule = false
+    @State private var editScheduleKind: ScheduleKind = .relative
+    @State private var editRelativeMinutes: Int = 60
+    @State private var editAbsoluteDate: Date = Date().addingTimeInterval(3600)
 
     var body: some View {
         VStack(spacing: 0) {
@@ -206,39 +279,56 @@ private struct ReminderDetailView: View {
     }
 
     private var actionBar: some View {
-        HStack {
+        HStack(spacing: 8) {
             if reminder.url != nil {
                 Button {
                     reopen()
                 } label: {
                     Label("Reopen", systemImage: "arrow.up.forward.app")
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.shadcn(.primary, fillWidth: true))
             }
-            Menu {
-                Button("Snooze 10 min") { snooze(minutes: 10) }
-                Button("Snooze 1 hour") { snooze(minutes: 60) }
-                Button("Tomorrow") { snooze(minutes: 60 * 24) }
-            } label: {
-                Label("Snooze", systemImage: "clock")
+            if reminder.status == .inProgress {
+                Button {
+                    startReschedule()
+                } label: {
+                    Label("Remind later", systemImage: "clock")
+                }
+                .buttonStyle(.shadcn(.secondary, fillWidth: true))
+                .popover(isPresented: $showReschedule, arrowEdge: .top) {
+                    reschedulePopover
+                }
+                Button {
+                    markCompleted()
+                } label: {
+                    Label("Complete", systemImage: "checkmark.circle")
+                }
+                .buttonStyle(.shadcn(.secondary, fillWidth: true))
+                Button {
+                    archive()
+                } label: {
+                    Label("Archive", systemImage: "archivebox")
+                }
+                .buttonStyle(.shadcn(.outline, fillWidth: true))
+            } else {
+                Button {
+                    reopenReminder()
+                } label: {
+                    Label("Move to In progress", systemImage: "arrow.uturn.backward")
+                }
+                .buttonStyle(.shadcn(.secondary, fillWidth: true))
             }
-            .fixedSize()
-            Button {
-                markDone()
-            } label: {
-                Label("Done", systemImage: "checkmark.circle")
-            }
-            Spacer()
-            Button(role: .destructive, action: onDelete) {
+            Button(action: onDelete) {
                 Label("Delete", systemImage: "trash")
             }
+            .buttonStyle(.shadcn(.outline, fillWidth: true))
         }
     }
 
     private var infoGrid: some View {
         VStack(alignment: .leading, spacing: 6) {
             row("Status", reminder.status.label)
-            row("Fires", reminder.effectiveFireDate.formatted(date: .abbreviated, time: .shortened))
+            row("Fires", reminder.fireDate.formatted(date: .abbreviated, time: .shortened))
             if let app = reminder.sourceApp { row("App", app) }
             if let title = reminder.windowTitle { row("Window", title) }
             if let url = reminder.url { row("URL", url.absoluteString) }
@@ -270,17 +360,77 @@ private struct ReminderDetailView: View {
         }
     }
 
-    private func snooze(minutes: Int) {
-        reminder.snoozedUntil = Date().addingTimeInterval(TimeInterval(minutes * 60))
-        reminder.status = .snoozed
+    /// Reschedule editor — the same schedule picker used when creating a
+    /// reminder, presented in a popover with a confirm action.
+    private var reschedulePopover: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Remind me later")
+                .font(.headline)
+            SchedulePickerView(scheduleKind: $editScheduleKind,
+                               relativeMinutes: $editRelativeMinutes,
+                               absoluteDate: $editAbsoluteDate)
+            HStack {
+                Button("Cancel") { showReschedule = false }
+                    .keyboardShortcut(.cancelAction)
+                    .buttonStyle(.shadcn(.outline))
+                Spacer()
+                Button("Update") { applyReschedule() }
+                    .keyboardShortcut(.defaultAction)
+                    .buttonStyle(.shadcn(.primary))
+            }
+        }
+        .padding(16)
+        .frame(width: 340)
+    }
+
+    /// Seed the editor with fresh create-flow defaults (In 1 hour) each time it
+    /// opens, matching the reminder-creation experience.
+    private func startReschedule() {
+        editScheduleKind = .relative
+        editRelativeMinutes = 60
+        editAbsoluteDate = Date().addingTimeInterval(3600)
+        showReschedule = true
+    }
+
+    /// "Remind later" is just rescheduling: resolve the picked schedule into a
+    /// fire date and re-arm the notification. The reminder stays `inProgress`.
+    private func applyReschedule() {
+        let fireDate: Date
+        switch editScheduleKind {
+        case .relative:
+            fireDate = Date().addingTimeInterval(TimeInterval(max(1, editRelativeMinutes) * 60))
+        case .absolute:
+            fireDate = editAbsoluteDate
+        }
+        reminder.scheduleKind = editScheduleKind
+        reminder.fireDate = fireDate
+        reminder.status = .inProgress
         try? context.save()
         NotificationScheduler.cancel(reminder)
         NotificationScheduler.schedule(reminder)
+        showReschedule = false
     }
 
-    private func markDone() {
-        reminder.status = .done
+    private func markCompleted() {
+        reminder.status = .completed
         try? context.save()
         NotificationScheduler.cancel(reminder)
+    }
+
+    private func archive() {
+        reminder.status = .archived
+        try? context.save()
+        NotificationScheduler.cancel(reminder)
+    }
+
+    /// Move an archived/completed reminder back to In progress and, if its fire
+    /// date is still in the future, re-arm the notification.
+    private func reopenReminder() {
+        reminder.status = .inProgress
+        try? context.save()
+        NotificationScheduler.cancel(reminder)
+        if reminder.fireDate > Date() {
+            NotificationScheduler.schedule(reminder)
+        }
     }
 }

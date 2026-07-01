@@ -132,7 +132,7 @@ final class CaptureDraft: ObservableObject {
             note: note.trimmingCharacters(in: .whitespacesAndNewlines),
             scheduleKind: schedule.kind,
             fireDate: schedule.fireDate,
-            status: .scheduled
+            status: .inProgress
         )
     }
 }

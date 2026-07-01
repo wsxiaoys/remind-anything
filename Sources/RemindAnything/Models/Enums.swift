@@ -16,20 +16,36 @@ enum ScheduleKind: String, Codable, CaseIterable, Identifiable {
 }
 
 /// Lifecycle state of a reminder.
+///
+/// Modeled after a Slack-style workflow: a reminder is either actively
+/// waiting to fire (`inProgress`), dismissed without completing
+/// (`archived`), or finished (`completed`). Snoozing is *not* a state —
+/// it simply reschedules the reminder to a later time.
 enum ReminderStatus: String, Codable, CaseIterable, Identifiable {
-    case scheduled
-    case fired
-    case done
-    case snoozed
+    case inProgress
+    case archived
+    case completed
 
     var id: String { rawValue }
 
     var label: String {
         switch self {
-        case .scheduled: return "Scheduled"
-        case .fired:     return "Fired"
-        case .done:      return "Done"
-        case .snoozed:   return "Snoozed"
+        case .inProgress: return "In progress"
+        case .archived:   return "Archived"
+        case .completed:  return "Completed"
+        }
+    }
+
+    /// Decode a stored raw value, migrating pre-Slack-model values.
+    ///
+    /// Legacy statuses map as: `done` → `completed`; `scheduled`, `fired`,
+    /// and `snoozed` → `inProgress`.
+    static func fromStored(_ raw: String) -> ReminderStatus {
+        if let value = ReminderStatus(rawValue: raw) { return value }
+        switch raw {
+        case "done":      return .completed
+        case "scheduled", "fired", "snoozed": return .inProgress
+        default:          return .inProgress
         }
     }
 }

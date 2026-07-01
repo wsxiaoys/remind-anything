@@ -32,6 +32,14 @@ enum Permissions {
         hasScreenRecording && hasAccessibility && hasNotifications
     }
 
+    /// Re-reads the (async) notifications status and republishes the latest
+    /// `allGranted` value so SwiftUI views — notably the menu-bar menu, whose
+    /// content is otherwise built once and cached — can react to changes.
+    static func refresh() async {
+        await refreshNotificationsStatus()
+        PermissionsMonitor.shared.allGranted = allGranted
+    }
+
     @discardableResult
     static func requestScreenRecording() -> Bool {
         CGRequestScreenCaptureAccess()
@@ -75,4 +83,17 @@ enum Permissions {
             }
         }
     }
+}
+
+/// Publishes permission grant state so SwiftUI views can update reactively.
+/// `MenuBarExtra(style: .menu)` builds its content once and caches it, so a
+/// plain static check (`Permissions.allGranted`) never re-renders. Observing
+/// this monitor forces the menu to rebuild when permissions change.
+@MainActor
+final class PermissionsMonitor: ObservableObject {
+    static let shared = PermissionsMonitor()
+
+    @Published var allGranted: Bool = Permissions.allGranted
+
+    private init() {}
 }

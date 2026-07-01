@@ -236,8 +236,7 @@ private struct HotkeyRecorder: View {
             Text(recording ? "Press keys…" : hotkey.displayString)
                 .frame(minWidth: 90)
         }
-        .buttonStyle(.bordered)
-        .tint(recording ? .accentColor : nil)
+        .buttonStyle(.shadcn(recording ? .primary : .outline))
         .onDisappear { stop() }
     }
 
@@ -296,7 +295,7 @@ struct PermissionsView: View {
                 title: "Notifications",
                 subtitle: "Delivers your reminders when they fire.",
                 granted: notificationsAuthorized,
-                action: { Task { notificationsAuthorized = await NotificationScheduler.requestAuthorization(); await Permissions.refreshNotificationsStatus() } },
+                action: { Task { notificationsAuthorized = await NotificationScheduler.requestAuthorization(); await Permissions.refresh() } },
                 openSettings: { Permissions.openPrivacyPane(.notifications) }
             )
             Text("Automation permission for each browser is requested the first time you capture from it.")
@@ -307,7 +306,8 @@ struct PermissionsView: View {
     }
 
     private func refreshNotificationStatus() async {
-        notificationsAuthorized = await Permissions.refreshNotificationsStatus()
+        await Permissions.refresh()
+        notificationsAuthorized = Permissions.hasNotifications
     }
 
     private func permissionRow(title: String,
@@ -329,7 +329,9 @@ struct PermissionsView: View {
             } else {
                 HStack(spacing: 6) {
                     Button("Request", action: action)
+                        .buttonStyle(.shadcn(.primary, size: .small))
                     Button("Settings", action: openSettings)
+                        .buttonStyle(.shadcn(.outline, size: .small))
                 }
             }
         }

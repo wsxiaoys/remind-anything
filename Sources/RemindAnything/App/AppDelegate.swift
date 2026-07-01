@@ -27,14 +27,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
                 name: AppSettings.hotkeysChanged,
                 object: nil
             )
+            // Re-check permissions when the app is reactivated so the menu's
+            // Welcome row reflects grants made in System Settings while running.
+            NotificationCenter.default.addObserver(
+                self,
+                selector: #selector(appDidBecomeActive),
+                name: NSApplication.didBecomeActiveNotification,
+                object: nil
+            )
         }
 
         Task { @MainActor in
             _ = await NotificationScheduler.requestAuthorization()
-            await Permissions.refreshNotificationsStatus()
+            await Permissions.refresh()
             reconcileReminders()
             showOnboardingIfNeeded()
         }
+    }
+
+    @objc private func appDidBecomeActive() {
+        Task { @MainActor in await Permissions.refresh() }
     }
 
     // MARK: - Hotkeys
@@ -148,22 +160,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         case .some(.snoozeTomorrow):
             snooze(reminder, minutes: 60 * 24)
         case .some(.done):
-            reminder?.status = .done
+            reminder?.status = .completed
             NotificationScheduler.cancel(id: reminderID)
         default:
             // .open, the default action, or a dismiss → open the target.
+            // Opening keeps the reminder in progress until the user
+            // completes or archives it.
             openTarget()
-            reminder?.status = .fired
         }
 
         try? context.save()
     }
 
+    /// "Snooze" is just rescheduling: push the fire date out and re-arm the
+    /// notification. The reminder stays `inProgress` the whole time.
     @MainActor
     private func snooze(_ reminder: Reminder?, minutes: Int) {
         guard let reminder else { return }
-        reminder.snoozedUntil = Date().addingTimeInterval(TimeInterval(minutes * 60))
-        reminder.status = .snoozed
+        reminder.fireDate = Date().addingTimeInterval(TimeInterval(minutes * 60))
+        reminder.status = .inProgress
         NotificationScheduler.cancel(reminder)
         NotificationScheduler.schedule(reminder)
     }

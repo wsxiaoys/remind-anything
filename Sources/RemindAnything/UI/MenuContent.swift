@@ -4,6 +4,7 @@ import SwiftUI
 struct MenuContent: View {
     @Environment(\.openWindow) private var openWindow
     @ObservedObject private var settings = AppSettings.shared
+    @ObservedObject private var permissions = PermissionsMonitor.shared
 
     var body: some View {
         Button {
@@ -36,7 +37,7 @@ struct MenuContent: View {
             Label("Open Library…", systemImage: "square.grid.2x2")
         }
 
-        if !Permissions.allGranted {
+        if !permissions.allGranted {
             Button {
                 openWindow(id: "onboarding")
                 NSApp.activate(ignoringOtherApps: true)

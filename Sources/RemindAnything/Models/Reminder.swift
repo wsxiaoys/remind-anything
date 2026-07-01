@@ -28,7 +28,6 @@ final class Reminder {
     var scheduleKindRaw: String
     var fireDate: Date
     var recurrenceRule: String?    // RFC 5545-ish, optional
-    var snoozedUntil: Date?
 
     // MARK: State
     var statusRaw: String
@@ -39,7 +38,7 @@ final class Reminder {
     }
 
     var status: ReminderStatus {
-        get { ReminderStatus(rawValue: statusRaw) ?? .scheduled }
+        get { ReminderStatus.fromStored(statusRaw) }
         set { statusRaw = newValue.rawValue }
     }
 
@@ -56,8 +55,7 @@ final class Reminder {
         scheduleKind: ScheduleKind,
         fireDate: Date,
         recurrenceRule: String? = nil,
-        snoozedUntil: Date? = nil,
-        status: ReminderStatus = .scheduled
+        status: ReminderStatus = .inProgress
     ) {
         self.id = id
         self.createdAt = createdAt
@@ -71,7 +69,6 @@ final class Reminder {
         self.scheduleKindRaw = scheduleKind.rawValue
         self.fireDate = fireDate
         self.recurrenceRule = recurrenceRule
-        self.snoozedUntil = snoozedUntil
         self.statusRaw = status.rawValue
     }
 }
@@ -103,10 +100,6 @@ extension Reminder {
 
     /// Whether `displayTitle` is derived from context rather than a user note.
     var hasNote: Bool { !note.isEmpty }
-
-    var effectiveFireDate: Date {
-        snoozedUntil ?? fireDate
-    }
 }
 
 private extension String {

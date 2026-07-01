@@ -30,7 +30,7 @@ struct OnboardingView: View {
                     .foregroundStyle(.secondary)
                 Spacer()
                 Button("Get Started", action: onFinish)
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(.shadcn(.primary))
                     .keyboardShortcut(.defaultAction)
             }
         }
