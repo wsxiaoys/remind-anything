@@ -1,6 +1,8 @@
 import SwiftUI
 import SwiftData
 import AppKit
+import UniformTypeIdentifiers
+import QuickLook
 
 /// Browse / search / manage captured reminders.
 struct LibraryView: View {
@@ -255,6 +257,20 @@ private struct ReminderDetailView: View {
     @State private var editRelativeMinutes: Int = 60
     @State private var editAbsoluteDate: Date = Date().addingTimeInterval(3600)
 
+    /// Drives the system Quick Look panel. Non-nil while a preview is open;
+    /// the panel resets this to nil when dismissed.
+    @State private var quickLookURL: URL?
+
+    /// Whether the pointer is over the screenshot — reveals the Quick Look
+    /// button in the corner.
+    @State private var isHoveringImage = false
+
+    /// Absolute on-disk URL of the full screenshot, used by Quick Look,
+    /// "Reveal in Finder", and the save panel.
+    private var imageURL: URL {
+        AppPaths.captureURL(forRelativePath: reminder.imagePath)
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             ScrollView {
@@ -262,12 +278,7 @@ private struct ReminderDetailView: View {
                     noteView
 
                     if let image = ImageStore.loadImage(relativePath: reminder.imagePath) {
-                        Image(nsImage: image)
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .frame(maxWidth: .infinity)
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
-                            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.secondary.opacity(0.2)))
+                        screenshotView(image)
                     }
 
                     infoGrid
@@ -281,6 +292,65 @@ private struct ReminderDetailView: View {
                 .padding(.horizontal, 20)
                 .padding(.vertical, 12)
         }
+        .quickLookPreview($quickLookURL)
+    }
+
+    /// The detail screenshot. Hovering reveals a Quick Look button in the
+    /// top-right corner; right-click exposes copy / reveal / save actions.
+    private func screenshotView(_ image: NSImage) -> some View {
+        Image(nsImage: image)
+            .resizable()
+            .aspectRatio(contentMode: .fit)
+            .frame(maxWidth: .infinity)
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.secondary.opacity(0.2)))
+            .overlay(alignment: .topTrailing) { quickLookButton }
+            .contentShape(RoundedRectangle(cornerRadius: 8))
+            .onHover { isHoveringImage = $0 }
+            .contextMenu {
+                Button("Quick Look") { openQuickLook() }
+                Button("Copy Image") { ImageStore.copyToPasteboard(image) }
+                Divider()
+                Button("Save Image…") { saveImage(image) }
+                Button("Reveal in Finder") { revealInFinder() }
+            }
+    }
+
+    /// Hover-revealed Quick Look affordance shown in the screenshot's corner.
+    private var quickLookButton: some View {
+        Button(action: openQuickLook) {
+            Image(systemName: "eye")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(.white)
+                .padding(6)
+                .background(.black.opacity(0.55), in: Circle())
+        }
+        .buttonStyle(.plain)
+        .pointingHandOnHover()
+        .help("Quick Look")
+        .padding(8)
+        .opacity(isHoveringImage ? 1 : 0)
+        .animation(.easeInOut(duration: 0.15), value: isHoveringImage)
+    }
+
+    private func openQuickLook() {
+        guard FileManager.default.fileExists(atPath: imageURL.path) else { return }
+        quickLookURL = imageURL
+    }
+
+    private func revealInFinder() {
+        guard FileManager.default.fileExists(atPath: imageURL.path) else { return }
+        NSWorkspace.shared.activateFileViewerSelecting([imageURL])
+    }
+
+    /// Presents a save panel so the user can export the screenshot as a PNG.
+    private func saveImage(_ image: NSImage) {
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.png]
+        panel.nameFieldStringValue = "\(reminder.displayTitle).png"
+        panel.canCreateDirectories = true
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        try? ImageStore.pngData(from: image)?.write(to: url, options: .atomic)
     }
 
     private var noteView: some View {
