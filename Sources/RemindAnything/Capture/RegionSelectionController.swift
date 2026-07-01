@@ -14,11 +14,19 @@ final class RegionSelectionController {
     func begin(_ completion: @escaping (CGRect?) -> Void) {
         self.completion = completion
 
-        // Span the union of all screen frames (AppKit bottom-left coordinates).
-        let union = NSScreen.screens.reduce(CGRect.null) { $0.union($1.frame) }
-        guard !union.isNull else { finish(nil); return }
+        // Present the overlay on the screen that currently contains the mouse
+        // cursor, so region selection appears on whichever display has focus in
+        // a multi-monitor setup — not just the primary display.
+        let mouse = NSEvent.mouseLocation // AppKit bottom-left coordinates
+        guard let screen = NSScreen.screens.first(where: { $0.frame.contains(mouse) })
+            ?? NSScreen.main
+            ?? NSScreen.screens.first else {
+            finish(nil)
+            return
+        }
+        let frame = screen.frame
 
-        let window = OverlayWindow(contentRect: union,
+        let window = OverlayWindow(contentRect: frame,
                                    styleMask: .borderless,
                                    backing: .buffered,
                                    defer: false)
@@ -29,14 +37,15 @@ final class RegionSelectionController {
         window.hasShadow = false
         window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
 
-        let view = SelectionView(frame: NSRect(origin: .zero, size: union.size))
+        let view = SelectionView(frame: NSRect(origin: .zero, size: frame.size))
         view.onComplete = { [weak self] rectInWindow in
-            self?.handleSelection(rectInWindow, windowOrigin: union.origin)
+            self?.handleSelection(rectInWindow, windowOrigin: frame.origin)
         }
         view.onCancel = { [weak self] in
             self?.finish(nil)
         }
         window.contentView = view
+        window.setFrame(frame, display: true)
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
         window.makeFirstResponder(view)

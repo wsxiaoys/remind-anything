@@ -7,6 +7,8 @@ struct ComposeView: View {
     let onSave: () -> Void
     let onCancel: () -> Void
 
+    @State private var relativePreset: RelativePreset = .hour1
+
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             thumbnail
@@ -96,11 +98,32 @@ struct ComposeView: View {
     }
 
     private var relativeControls: some View {
-        HStack {
-            Stepper(value: $draft.relativeMinutes, in: 1...100_000, step: 5) {
-                Text("In \(formatMinutes(draft.relativeMinutes))")
+        VStack(alignment: .leading, spacing: 8) {
+            Picker("Remind me", selection: $relativePreset) {
+                ForEach(RelativePreset.allCases) { preset in
+                    Text(preset.label).tag(preset)
+                }
             }
+            .onChange(of: relativePreset) { _, newValue in
+                if let minutes = newValue.minutesFromNow() {
+                    draft.relativeMinutes = minutes
+                }
+            }
+
+            if relativePreset == .custom {
+                Stepper(value: $draft.relativeMinutes, in: 1...100_000, step: 5) {
+                    Text("In \(formatMinutes(draft.relativeMinutes))")
+                }
+            }
+
+            Text("Reminds \(relativeFireDate.formatted(date: .abbreviated, time: .shortened))")
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
+    }
+
+    private var relativeFireDate: Date {
+        Date().addingTimeInterval(TimeInterval(max(1, draft.relativeMinutes) * 60))
     }
 
     private var absoluteControls: some View {

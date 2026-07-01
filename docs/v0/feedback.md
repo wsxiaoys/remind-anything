@@ -12,6 +12,7 @@ This document curates feedback and suggested improvements against the v0 impleme
 - **Potential Solution:**
   - Detect the active screen containing the mouse cursor (e.g., using `NSScreen.main` or finding the screen matching `NSEvent.mouseLocation`).
   - Position and present the `RegionSelectionController` / overlay window on that specific screen instead of defaulting to the primary screen.
+- **✅ Resolved:** `RegionSelectionController.begin` now finds the screen containing `NSEvent.mouseLocation` and presents the overlay on that display's frame (falling back to `NSScreen.main`), instead of spanning the union of all screens. Selection coordinates are converted from that screen's origin.
 
 ## 2. Window Management / Focus
 
@@ -42,3 +43,4 @@ This document curates feedback and suggested improvements against the v0 impleme
 - **Potential Solution:**
   - Introduce Slack-style presets for the schedule picker (e.g., "In 1 hour", "In 3 hours", "Tomorrow", "Next week", "In 3 days").
   - Provide a list of common presets while still allowing custom intervals if needed.
+- **✅ Resolved:** The "In" (relative) picker now offers a `RelativePreset` menu — `In 30 minutes`, `In 1 hour`, `In 3 hours`, `Tomorrow`, `Next week`, and `Custom…`. `Tomorrow`/`Next week` resolve to 9:00 AM (Slack-style). Selecting `Custom…` reveals the original minute stepper, and a caption shows the resolved fire time.

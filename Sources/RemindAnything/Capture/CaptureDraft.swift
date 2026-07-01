@@ -17,6 +17,54 @@ enum RecurrencePreset: String, CaseIterable, Identifiable {
     }
 }
 
+/// Slack-style quick presets for the "In" (relative) schedule picker, so users
+/// can pick common timeframes without fiddling with a minute stepper.
+enum RelativePreset: String, CaseIterable, Identifiable {
+    case min30
+    case hour1
+    case hour3
+    case tomorrow
+    case nextWeek
+    case custom
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .min30:    return "In 30 minutes"
+        case .hour1:    return "In 1 hour"
+        case .hour3:    return "In 3 hours"
+        case .tomorrow: return "Tomorrow"
+        case .nextWeek: return "Next week"
+        case .custom:   return "Custom…"
+        }
+    }
+
+    /// Minutes from `now` this preset resolves to, or `nil` for `.custom`
+    /// (which lets the user enter an arbitrary interval).
+    ///
+    /// `Tomorrow` and `Next week` land on 9:00 AM, matching the Slack behaviour
+    /// of reminding in the morning rather than exactly 24 hours / 7 days later.
+    func minutesFromNow(now: Date = Date(), calendar: Calendar = .current) -> Int? {
+        switch self {
+        case .min30: return 30
+        case .hour1: return 60
+        case .hour3: return 180
+        case .tomorrow: return Self.minutes(from: now, toMorningAfterDays: 1, calendar: calendar)
+        case .nextWeek: return Self.minutes(from: now, toMorningAfterDays: 7, calendar: calendar)
+        case .custom: return nil
+        }
+    }
+
+    private static func minutes(from now: Date, toMorningAfterDays days: Int, calendar: Calendar) -> Int {
+        let startOfDay = calendar.startOfDay(for: now)
+        let targetDay = calendar.date(byAdding: .day, value: days, to: startOfDay) ?? now
+        let target = calendar.date(bySettingHour: 9, minute: 0, second: 0, of: targetDay) ?? targetDay
+        let seconds = target.timeIntervalSince(now)
+        return max(1, Int(seconds / 60))
+    }
+}
+
 /// Mutable, in-flight capture the compose panel edits before it becomes a
 /// persisted `Reminder`.
 @MainActor
