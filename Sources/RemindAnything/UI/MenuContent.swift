@@ -8,6 +8,34 @@ struct MenuContent: View {
 
     var body: some View {
         Button {
+            openWindow(id: "preferences")
+            NSApp.activate(ignoringOtherApps: true)
+        } label: {
+            Label("Preferences…", systemImage: "gearshape")
+        }
+        .keyboardShortcut(",", modifiers: .command)
+
+        if !permissions.allGranted {
+            Button {
+                openWindow(id: "onboarding")
+                NSApp.activate(ignoringOtherApps: true)
+            } label: {
+                Label("Welcome to Remind Anything…", systemImage: "hand.wave")
+            }
+        }
+
+        Divider()
+
+        Button {
+            openWindow(id: "library")
+            NSApp.activate(ignoringOtherApps: true)
+        } label: {
+            Label("Open Library…", systemImage: "square.grid.2x2")
+        }
+
+        Divider()
+
+        Button {
             CaptureCoordinator.shared.capture(mode: .region)
         } label: {
             Label("Capture Region", systemImage: "crop")
@@ -27,32 +55,6 @@ struct MenuContent: View {
             Label("Capture Screen", systemImage: "display")
         }
         .keyboardShortcut("3", modifiers: [.option, .shift])
-
-        Divider()
-
-        Button {
-            openWindow(id: "library")
-            NSApp.activate(ignoringOtherApps: true)
-        } label: {
-            Label("Open Library…", systemImage: "square.grid.2x2")
-        }
-
-        if !permissions.allGranted {
-            Button {
-                openWindow(id: "onboarding")
-                NSApp.activate(ignoringOtherApps: true)
-            } label: {
-                Label("Welcome to Remind Anything…", systemImage: "hand.wave")
-            }
-        }
-
-        Button {
-            openWindow(id: "preferences")
-            NSApp.activate(ignoringOtherApps: true)
-        } label: {
-            Label("Preferences…", systemImage: "gearshape")
-        }
-        .keyboardShortcut(",", modifiers: .command)
 
         Divider()
 
