@@ -49,6 +49,10 @@ final class RegionSelectionController {
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
         window.makeFirstResponder(view)
+        // Force the crosshair immediately. Cursor rects only refresh on the next
+        // mouse-move, so without this the pointer stays an arrow until the user
+        // jiggles the mouse — which looks like the tool is slow to respond.
+        NSCursor.crosshair.set()
         self.window = window
     }
 
@@ -98,11 +102,37 @@ private final class SelectionView: NSView {
 
     private var startPoint: CGPoint?
     private var currentRect: CGRect?
+    private var trackingArea: NSTrackingArea?
 
     override var acceptsFirstResponder: Bool { true }
 
     override func resetCursorRects() {
         addCursorRect(bounds, cursor: .crosshair)
+    }
+
+    // A tracking area with `.cursorUpdate` reasserts the crosshair reliably as
+    // the mouse moves, and `.activeAlways` keeps it working while our overlay is
+    // key. This complements the immediate `NSCursor.crosshair.set()` on present.
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let existing = trackingArea {
+            removeTrackingArea(existing)
+        }
+        let area = NSTrackingArea(rect: bounds,
+                                  options: [.activeAlways, .inVisibleRect,
+                                            .mouseEnteredAndExited, .cursorUpdate],
+                                  owner: self,
+                                  userInfo: nil)
+        addTrackingArea(area)
+        trackingArea = area
+    }
+
+    override func cursorUpdate(with event: NSEvent) {
+        NSCursor.crosshair.set()
+    }
+
+    override func mouseEntered(with event: NSEvent) {
+        NSCursor.crosshair.set()
     }
 
     override func draw(_ dirtyRect: NSRect) {

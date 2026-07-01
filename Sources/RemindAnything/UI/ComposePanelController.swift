@@ -41,11 +41,28 @@ final class ComposePanelController {
         panel.hidesOnDeactivate = false
         panel.isMovableByWindowBackground = true
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-        panel.center()
+        centerOnActiveScreen(panel)
 
         panel.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
         self.panel = panel
+    }
+
+    /// Center the panel on the display under the mouse cursor (where the capture
+    /// just happened) instead of the main display, so the compose dialog appears
+    /// on the same screen the user is working on in a multi-monitor setup.
+    private func centerOnActiveScreen(_ panel: NSPanel) {
+        let mouse = NSEvent.mouseLocation
+        guard let screen = NSScreen.screens.first(where: { $0.frame.contains(mouse) })
+            ?? NSScreen.main ?? NSScreen.screens.first else {
+            panel.center()
+            return
+        }
+        let visible = screen.visibleFrame
+        let size = panel.frame.size
+        let origin = CGPoint(x: visible.midX - size.width / 2,
+                             y: visible.midY - size.height / 2)
+        panel.setFrameOrigin(origin)
     }
 
     func dismiss() {

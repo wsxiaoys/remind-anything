@@ -30,19 +30,30 @@ final class CaptureCoordinator: ObservableObject {
         isCapturing = true
         defer { isCapturing = false }
 
-        // Collect context BEFORE we alter focus (e.g. showing the region overlay),
-        // so a browser tab's URL is still readable.
-        let context = ContextCollector.collect()
-
         do {
             let result: CaptureEngine.Result
+            let context: CaptureContext
             switch mode {
             case .fullScreen:
+                context = ContextCollector.collect()
                 result = try await engine.captureFullScreen()
             case .window:
+                context = ContextCollector.collect()
                 result = try await engine.captureFrontWindow()
             case .region:
+                // Present the crosshair overlay IMMEDIATELY for a snappy feel.
+                // Snapshot the frontmost app first (instant) so its context —
+                // including a browser tab's URL — can still be collected after
+                // the overlay steals focus. The (slow) browser/AX queries then
+                // run off the critical path instead of delaying the overlay.
+                let frontApp = NSWorkspace.shared.frontmostApplication
                 guard let rect = await selectRegion() else { return } // cancelled
+                // Prefer the app owning the window *under the selected region* so
+                // context is right even when keyboard focus is on another window
+                // or display; fall back to the pre-overlay frontmost app.
+                let probe = CGPoint(x: rect.midX, y: rect.midY)
+                let targetApp = ContextCollector.appUnderPoint(probe) ?? frontApp
+                context = ContextCollector.collect(frontApp: targetApp)
                 // Give the overlay a beat to disappear before grabbing pixels.
                 try? await Task.sleep(nanoseconds: 120_000_000)
                 result = try await engine.captureRegion(rect)
