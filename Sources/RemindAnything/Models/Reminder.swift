@@ -84,7 +84,32 @@ extension Reminder {
         return windowTitle ?? "Capture"
     }
 
+    /// A meaningful title for the capture. Falls back to the richest piece of
+    /// captured context (page/window title, app, or host) when the user hasn't
+    /// typed a note yet.
+    var displayTitle: String {
+        if !note.isEmpty { return note }
+        if let title = pageTitle?.trimmed, !title.isEmpty { return title }
+        if let title = windowTitle?.trimmed, !title.isEmpty {
+            if let app = sourceApp?.trimmed, !app.isEmpty {
+                return "\(title) — \(app)"
+            }
+            return title
+        }
+        if let app = sourceApp?.trimmed, !app.isEmpty { return "Capture from \(app)" }
+        if let host = url?.host { return "Capture from \(host)" }
+        return "Untitled capture"
+    }
+
+    /// Whether `displayTitle` is derived from context rather than a user note.
+    var hasNote: Bool { !note.isEmpty }
+
     var effectiveFireDate: Date {
         snoozedUntil ?? fireDate
     }
+}
+
+private extension String {
+    /// Whitespace/newline-trimmed copy.
+    var trimmed: String { trimmingCharacters(in: .whitespacesAndNewlines) }
 }

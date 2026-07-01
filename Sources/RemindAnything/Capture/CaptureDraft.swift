@@ -24,28 +24,54 @@ enum RelativePreset: String, CaseIterable, Identifiable {
         }
     }
 
-    /// Minutes from `now` this preset resolves to, or `nil` for `.custom`
-    /// (which lets the user enter an arbitrary interval).
+    /// How a preset maps onto the draft's schedule inputs.
+    enum Resolution {
+        case relative(minutes: Int)  // fire after a fixed delay
+        case absolute(Date)          // fire at a specific wall-clock time
+        case custom                  // user picks an exact date & time
+    }
+
+    /// Resolve this preset relative to `now`.
     ///
-    /// `Tomorrow` and `Next week` land on 9:00 AM, matching the Slack behaviour
-    /// of reminding in the morning rather than exactly 24 hours / 7 days later.
-    func minutesFromNow(now: Date = Date(), calendar: Calendar = .current) -> Int? {
+    /// Short presets (30 min / 1 / 3 hours) stay *relative* delays, but
+    /// `Tomorrow` and `Next week` resolve to an *absolute* 9:00 AM — matching
+    /// Slack's morning-reminder behaviour. `Next week` lands on the coming
+    /// Monday morning rather than exactly 7 days later. Using an absolute date
+    /// (instead of a minutes-from-now offset) keeps the fire time pinned exactly
+    /// to 9:00 AM rather than drifting to 8:59 due to fractional-minute
+    /// truncation and the delay between picking and saving.
+    func resolution(now: Date = Date(), calendar: Calendar = .current) -> Resolution {
         switch self {
-        case .min30: return 30
-        case .hour1: return 60
-        case .hour3: return 180
-        case .tomorrow: return Self.minutes(from: now, toMorningAfterDays: 1, calendar: calendar)
-        case .nextWeek: return Self.minutes(from: now, toMorningAfterDays: 7, calendar: calendar)
-        case .custom: return nil
+        case .min30: return .relative(minutes: 30)
+        case .hour1: return .relative(minutes: 60)
+        case .hour3: return .relative(minutes: 180)
+        case .tomorrow: return .absolute(Self.morning(of: Self.day(from: now, afterDays: 1, calendar: calendar), calendar: calendar))
+        case .nextWeek: return .absolute(Self.morning(of: Self.nextMonday(from: now, calendar: calendar), calendar: calendar))
+        case .custom: return .custom
         }
     }
 
-    private static func minutes(from now: Date, toMorningAfterDays days: Int, calendar: Calendar) -> Int {
+    private static func day(from now: Date, afterDays days: Int, calendar: Calendar) -> Date {
         let startOfDay = calendar.startOfDay(for: now)
-        let targetDay = calendar.date(byAdding: .day, value: days, to: startOfDay) ?? now
-        let target = calendar.date(bySettingHour: 9, minute: 0, second: 0, of: targetDay) ?? targetDay
-        let seconds = target.timeIntervalSince(now)
-        return max(1, Int(seconds / 60))
+        return calendar.date(byAdding: .day, value: days, to: startOfDay) ?? now
+    }
+
+    /// The Monday of next week (relative to a Monday-based week), always
+    /// strictly in the future.
+    private static func nextMonday(from now: Date, calendar: Calendar) -> Date {
+        let startOfDay = calendar.startOfDay(for: now)
+        // Calendar weekday: 1 = Sunday, 2 = Monday, … 7 = Saturday.
+        let weekday = calendar.component(.weekday, from: startOfDay)
+        // Days to the upcoming Monday (0 if today is Monday, 1 if Sunday, …).
+        let toUpcomingMonday = ((2 - weekday) + 7) % 7
+        // If today is Monday, jump a full week; otherwise the upcoming Monday
+        // already belongs to next week.
+        let offset = toUpcomingMonday == 0 ? 7 : toUpcomingMonday
+        return calendar.date(byAdding: .day, value: offset, to: startOfDay) ?? startOfDay
+    }
+
+    private static func morning(of day: Date, calendar: Calendar) -> Date {
+        calendar.date(bySettingHour: 9, minute: 0, second: 0, of: day) ?? day
     }
 }
 

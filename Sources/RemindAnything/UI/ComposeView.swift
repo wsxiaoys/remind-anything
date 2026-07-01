@@ -114,10 +114,16 @@ struct ComposeView: View {
                 }
             }
             .onChange(of: relativePreset) { _, newValue in
-                if let minutes = newValue.minutesFromNow() {
+                switch newValue.resolution() {
+                case .relative(let minutes):
                     draft.scheduleKind = .relative
                     draft.relativeMinutes = minutes
-                } else {
+                case .absolute(let date):
+                    // Fixed wall-clock presets (Tomorrow / Next week) pin the
+                    // fire time exactly, avoiding minute-drift.
+                    draft.scheduleKind = .absolute
+                    draft.absoluteDate = date
+                case .custom:
                     // Custom → pick an exact date & time (absolute schedule),
                     // snapped to a fixed 15-minute increment like Slack.
                     draft.scheduleKind = .absolute
@@ -166,10 +172,12 @@ struct ComposeView: View {
     }
 
     private var fireDatePreview: Date {
-        if relativePreset == .custom {
+        switch draft.scheduleKind {
+        case .absolute:
             return draft.absoluteDate
+        case .relative:
+            return Date().addingTimeInterval(TimeInterval(max(1, draft.relativeMinutes) * 60))
         }
-        return Date().addingTimeInterval(TimeInterval(max(1, draft.relativeMinutes) * 60))
     }
 
     /// Round a date up to the next 15-minute boundary (seconds zeroed) so the

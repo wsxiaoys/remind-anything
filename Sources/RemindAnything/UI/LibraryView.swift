@@ -110,9 +110,10 @@ private struct ReminderRow: View {
         HStack(spacing: 10) {
             thumbnail
             VStack(alignment: .leading, spacing: 2) {
-                Text(reminder.note.isEmpty ? "(no note)" : reminder.note)
+                Text(reminder.displayTitle)
                     .lineLimit(1)
                     .font(.body)
+                    .foregroundStyle(reminder.hasNote ? AnyShapeStyle(.primary) : AnyShapeStyle(.secondary))
                 Text(reminder.contextSummary)
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -170,50 +171,67 @@ private struct ReminderDetailView: View {
     let onDelete: () -> Void
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                if let image = ImageStore.loadImage(relativePath: reminder.imagePath) {
-                    Image(nsImage: image)
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(maxWidth: .infinity)
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
-                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.secondary.opacity(0.2)))
+        VStack(spacing: 0) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    if let image = ImageStore.loadImage(relativePath: reminder.imagePath) {
+                        Image(nsImage: image)
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(maxWidth: .infinity)
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.secondary.opacity(0.2)))
+                    }
+
+                    noteView
+
+                    infoGrid
                 }
-
-                Text(reminder.note.isEmpty ? "(no note)" : reminder.note)
-                    .font(.title3)
-
-                infoGrid
-
-                HStack {
-                    if reminder.url != nil {
-                        Button {
-                            reopen()
-                        } label: {
-                            Label("Reopen", systemImage: "arrow.up.forward.app")
-                        }
-                        .buttonStyle(.borderedProminent)
-                    }
-                    Menu {
-                        Button("Snooze 10 min") { snooze(minutes: 10) }
-                        Button("Snooze 1 hour") { snooze(minutes: 60) }
-                        Button("Tomorrow") { snooze(minutes: 60 * 24) }
-                    } label: {
-                        Label("Snooze", systemImage: "clock")
-                    }
-                    Button {
-                        markDone()
-                    } label: {
-                        Label("Done", systemImage: "checkmark.circle")
-                    }
-                    Spacer()
-                    Button(role: .destructive, action: onDelete) {
-                        Label("Delete", systemImage: "trash")
-                    }
-                }
+                .padding(20)
             }
-            .padding(20)
+
+            Divider()
+
+            actionBar
+                .padding(.horizontal, 20)
+                .padding(.vertical, 12)
+        }
+    }
+
+    private var noteView: some View {
+        Text(reminder.displayTitle)
+            .font(.title3)
+            .fontWeight(.semibold)
+            .textSelection(.enabled)
+    }
+
+    private var actionBar: some View {
+        HStack {
+            if reminder.url != nil {
+                Button {
+                    reopen()
+                } label: {
+                    Label("Reopen", systemImage: "arrow.up.forward.app")
+                }
+                .buttonStyle(.borderedProminent)
+            }
+            Menu {
+                Button("Snooze 10 min") { snooze(minutes: 10) }
+                Button("Snooze 1 hour") { snooze(minutes: 60) }
+                Button("Tomorrow") { snooze(minutes: 60 * 24) }
+            } label: {
+                Label("Snooze", systemImage: "clock")
+            }
+            .fixedSize()
+            Button {
+                markDone()
+            } label: {
+                Label("Done", systemImage: "checkmark.circle")
+            }
+            Spacer()
+            Button(role: .destructive, action: onDelete) {
+                Label("Delete", systemImage: "trash")
+            }
         }
     }
 
