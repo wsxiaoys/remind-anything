@@ -36,9 +36,20 @@ struct MenuContent: View {
             Label("Open Library…", systemImage: "square.grid.2x2")
         }
 
-        SettingsLink {
+        Button {
+            openWindow(id: "onboarding")
+            NSApp.activate(ignoringOtherApps: true)
+        } label: {
+            Label("Welcome to Remind Anything…", systemImage: "hand.wave")
+        }
+
+        Button {
+            openWindow(id: "preferences")
+            NSApp.activate(ignoringOtherApps: true)
+        } label: {
             Label("Preferences…", systemImage: "gearshape")
         }
+        .keyboardShortcut(",", modifiers: .command)
 
         Divider()
 

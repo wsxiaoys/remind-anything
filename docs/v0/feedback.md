@@ -22,6 +22,7 @@ This document curates feedback and suggested improvements against the v0 impleme
 - **Potential Solution:**
   - Ensure that when the Preferences window is ordered to front, the application is also activated.
   - For example, call `NSApp.activate(ignoringOtherApps: true)` before showing the Preferences window, or call `window.makeKeyAndOrderFront(nil)` along with application activation.
+- **✅ Resolved:** The SwiftUI `Settings` scene could not be brought to the front from an accessory / menu-bar-only (`LSUIElement`) app. Preferences is now a normal `Window("Preferences", id: "preferences")` scene, and the `Preferences…` menu item (⌘,) opens it via `openWindow(id:)` + `NSApp.activate(ignoringOtherApps:)` — the same pattern the Library window uses — so it reliably comes to the front.
 
 ## 3. Onboarding & Menu Bar UX
 
@@ -31,6 +32,7 @@ This document curates feedback and suggested improvements against the v0 impleme
 - **Potential Solution:**
   - Add a menu item like `Welcome to Remind Anything...` or `Show Welcome Screen` to the menu bar extra dropdown.
   - Alternatively, integrate or link the welcome/onboarding view directly within the Preferences window (e.g., as a tab or a button to "Rerun Onboarding").
+- **✅ Resolved:** Added a `Welcome to Remind Anything…` menu item that opens a reopenable `Window("Welcome", id: "onboarding")` scene via `openWindow(id:)` + `NSApp.activate(ignoringOtherApps:)`. Completing it marks onboarding done and dismisses the window; first-run onboarding is unchanged.
 
 ## 4. Compose UI & Schedule Picker
 
