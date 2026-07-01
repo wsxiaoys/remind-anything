@@ -31,6 +31,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
 
         Task { @MainActor in
             _ = await NotificationScheduler.requestAuthorization()
+            await Permissions.refreshNotificationsStatus()
             reconcileReminders()
             showOnboardingIfNeeded()
         }

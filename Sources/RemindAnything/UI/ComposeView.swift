@@ -1,13 +1,15 @@
 import SwiftUI
 
 /// The compose panel: thumbnail, editable context chips, note field, and a
-/// schedule picker (At / In / Every).
+/// schedule picker (At / In).
 struct ComposeView: View {
     @ObservedObject var draft: CaptureDraft
     let onSave: () -> Void
     let onCancel: () -> Void
 
     @State private var relativePreset: RelativePreset = .hour1
+    @State private var showNote = false
+    @FocusState private var noteFocused: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -16,12 +18,10 @@ struct ComposeView: View {
             noteField
             Divider()
             schedulePicker
-            Spacer(minLength: 0)
             actionButtons
         }
         .padding(16)
         .frame(width: 380)
-        .frame(minHeight: 520)
     }
 
     // MARK: - Sections
@@ -66,16 +66,42 @@ struct ComposeView: View {
         .clipShape(Capsule())
     }
 
+    @ViewBuilder
     private var noteField: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("Note").font(.caption).foregroundStyle(.secondary)
-            TextEditor(text: $draft.note)
-                .font(.body)
-                .frame(height: 70)
-                .padding(6)
-                .background(Color(nsColor: .textBackgroundColor))
-                .clipShape(RoundedRectangle(cornerRadius: 6))
-                .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.secondary.opacity(0.2)))
+        if showNote {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Text("Note").font(.caption).foregroundStyle(.secondary)
+                    Spacer()
+                    Button {
+                        draft.note = ""
+                        showNote = false
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Remove note")
+                }
+                TextEditor(text: $draft.note)
+                    .font(.body)
+                    .focused($noteFocused)
+                    .frame(height: 70)
+                    .padding(6)
+                    .background(Color(nsColor: .textBackgroundColor))
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                    .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.secondary.opacity(0.2)))
+            }
+        } else {
+            Button {
+                showNote = true
+                noteFocused = true
+            } label: {
+                Label("Add note", systemImage: "plus.circle")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
         }
     }
 
@@ -92,7 +118,6 @@ struct ComposeView: View {
             switch draft.scheduleKind {
             case .relative:  relativeControls
             case .absolute:  absoluteControls
-            case .recurring: recurringControls
             }
         }
     }
@@ -131,26 +156,12 @@ struct ComposeView: View {
             .datePickerStyle(.compact)
     }
 
-    private var recurringControls: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Picker("Every", selection: $draft.recurrence) {
-                ForEach(RecurrencePreset.allCases) { p in
-                    Text(p.label).tag(p)
-                }
-            }
-            if draft.recurrence != .hourly {
-                DatePicker("At", selection: $draft.recurringTime, displayedComponents: .hourAndMinute)
-                    .datePickerStyle(.compact)
-            }
-        }
-    }
-
     private var actionButtons: some View {
         HStack {
             Button("Cancel", role: .cancel, action: onCancel)
                 .keyboardShortcut(.cancelAction)
             Spacer()
-            Button("Save Reminder", action: onSave)
+            Button("Save", action: onSave)
                 .keyboardShortcut(.defaultAction)
                 .buttonStyle(.borderedProminent)
         }

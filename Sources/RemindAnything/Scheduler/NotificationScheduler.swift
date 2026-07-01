@@ -96,7 +96,7 @@ enum NotificationScheduler {
     static func reconcile(pending reminders: [Reminder]) {
         let now = Date()
         for reminder in reminders where reminder.status == .scheduled || reminder.status == .snoozed {
-            if reminder.effectiveFireDate > now || reminder.scheduleKind == .recurring {
+            if reminder.effectiveFireDate > now {
                 schedule(reminder)
             }
         }
@@ -117,38 +117,7 @@ enum NotificationScheduler {
             guard fireDate > Date() else { return nil }
             let comps = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: fireDate)
             return UNCalendarNotificationTrigger(dateMatching: comps, repeats: false)
-
-        case .recurring:
-            return recurringTrigger(rule: reminder.recurrenceRule, fireDate: fireDate)
         }
-    }
-
-    /// Very small recurrence vocabulary: "daily", "weekly", "weekly:<1-7>",
-    /// "hourly". Weekday uses Calendar's 1 = Sunday convention.
-    private static func recurringTrigger(rule: String?, fireDate: Date) -> UNNotificationTrigger? {
-        let cal = Calendar.current
-        let hm = cal.dateComponents([.hour, .minute], from: fireDate)
-        var comps = DateComponents()
-        comps.hour = hm.hour
-        comps.minute = hm.minute
-
-        switch (rule ?? "daily").lowercased() {
-        case "hourly":
-            comps = DateComponents()
-            comps.minute = cal.component(.minute, from: fireDate)
-        case "daily":
-            break
-        case let r where r.hasPrefix("weekly"):
-            let parts = r.split(separator: ":")
-            if parts.count == 2, let weekday = Int(parts[1]) {
-                comps.weekday = weekday
-            } else {
-                comps.weekday = cal.component(.weekday, from: fireDate)
-            }
-        default:
-            break
-        }
-        return UNCalendarNotificationTrigger(dateMatching: comps, repeats: true)
     }
 
     // MARK: - Attachments

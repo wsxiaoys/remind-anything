@@ -4,9 +4,10 @@ description: |
   Structured loop for turning a curated feedback document into verified,
   committed code changes. Use when the user says things like "address the
   feedback in <file>", "work through docs/.../feedback.md", "fix these review
-  items", or when iterating on a bug the user keeps reporting as "still broken".
-  Emphasizes rebuild-for-testing, root-cause diagnosis before re-implementing,
-  clean reverts of dead ends, and focused per-item commits.
+  items", "new iteration <N>", or when iterating on a bug the user keeps
+  reporting as "still broken". Emphasizes rebuild-for-testing, root-cause
+  diagnosis before re-implementing, clean reverts of dead ends, and focused
+  per-item commits.
 ---
 
 # Dev Iteration Loop
@@ -17,6 +18,23 @@ commits. The outcome is each feedback item verified by the user and committed
 (or cleanly reverted), with the feedback document updated to reflect status.
 
 ## Workflow
+
+### Step 0: Kick off a new iteration (when asked for "new iteration <N>")
+- Scaffold `docs/iteration-<N>/feedback.md` (mirror the previous iteration's
+  structure/template) so there's a place to record items. Add an `assets/` dir
+  when screenshots arrive.
+- Rebuild the distributable and relaunch a fresh build (see Step 3) so the user
+  tests the current code, not a stale bundle.
+- Then **collect feedback interactively with `askFollowupQuestion`** rather than
+  passively waiting — ask the user what they want to change, offering concrete
+  options (e.g. new bug, UI tweak, "everything works", or paste a list).
+- **Recording feedback is a separate phase from implementing. While collecting
+  feedback: do NOT read code and do NOT make any code changes.** Just transcribe
+  the user's report clearly and fluently into `feedback.md` (problem, impact,
+  and — only if the user gave one — a suggested direction). Keep gathering items
+  until the user signals they're done.
+- Defer ALL code investigation and implementation to Step 2, and only begin once
+  the user asks you to address the recorded items.
 
 ### Step 1: Enumerate the feedback
 - Read the feedback document in full. Extract a numbered list of concrete items,

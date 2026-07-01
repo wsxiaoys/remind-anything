@@ -26,11 +26,14 @@ final class ComposePanelController {
             onCancel: { [weak self] in self?.dismiss() }
         )
 
-        let hosting = NSHostingView(rootView: root)
-        let panel = NSPanel(contentRect: NSRect(x: 0, y: 0, width: 380, height: 520),
-                            styleMask: [.titled, .closable, .fullSizeContentView, .nonactivatingPanel],
-                            backing: .buffered,
-                            defer: false)
+        // Host in an NSHostingController with `.preferredContentSize` so the
+        // panel resizes to fit the SwiftUI content — including when the note
+        // section is expanded or collapsed — instead of a fixed height.
+        let hostingController = NSHostingController(rootView: root)
+        hostingController.sizingOptions = [.preferredContentSize]
+
+        let panel = NSPanel(contentViewController: hostingController)
+        panel.styleMask = [.titled, .closable, .fullSizeContentView, .nonactivatingPanel]
         panel.title = "New Reminder"
         panel.titlebarAppearsTransparent = true
         panel.isFloatingPanel = true
@@ -38,7 +41,6 @@ final class ComposePanelController {
         panel.hidesOnDeactivate = false
         panel.isMovableByWindowBackground = true
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-        panel.contentView = hosting
         panel.center()
 
         panel.makeKeyAndOrderFront(nil)

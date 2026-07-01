@@ -221,9 +221,6 @@ private struct ReminderDetailView: View {
         VStack(alignment: .leading, spacing: 6) {
             row("Status", reminder.status.label)
             row("Fires", reminder.effectiveFireDate.formatted(date: .abbreviated, time: .shortened))
-            if reminder.scheduleKind == .recurring, let rule = reminder.recurrenceRule {
-                row("Repeats", rule)
-            }
             if let app = reminder.sourceApp { row("App", app) }
             if let title = reminder.windowTitle { row("Window", title) }
             if let url = reminder.url { row("URL", url.absoluteString) }

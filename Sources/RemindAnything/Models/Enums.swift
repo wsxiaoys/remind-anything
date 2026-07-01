@@ -4,7 +4,6 @@ import Foundation
 enum ScheduleKind: String, Codable, CaseIterable, Identifiable {
     case absolute   // fire at a specific date/time ("At")
     case relative   // fire after a delay ("In")
-    case recurring  // fire on a repeating calendar rule ("Every")
 
     var id: String { rawValue }
 
@@ -12,7 +11,6 @@ enum ScheduleKind: String, Codable, CaseIterable, Identifiable {
         switch self {
         case .absolute:  return "At"
         case .relative:  return "In"
-        case .recurring: return "Every"
         }
     }
 }

@@ -1,22 +1,6 @@
 import AppKit
 import Combine
 
-/// Simple recurrence presets exposed in the compose UI.
-enum RecurrencePreset: String, CaseIterable, Identifiable {
-    case hourly
-    case daily
-    case weekly
-
-    var id: String { rawValue }
-    var label: String {
-        switch self {
-        case .hourly: return "Hour"
-        case .daily:  return "Day"
-        case .weekly: return "Week"
-        }
-    }
-}
-
 /// Slack-style quick presets for the "In" (relative) schedule picker, so users
 /// can pick common timeframes without fiddling with a minute stepper.
 enum RelativePreset: String, CaseIterable, Identifiable {
@@ -84,8 +68,6 @@ final class CaptureDraft: ObservableObject {
     @Published var scheduleKind: ScheduleKind = .relative
     @Published var relativeMinutes: Int = 60
     @Published var absoluteDate: Date = Date().addingTimeInterval(3600)
-    @Published var recurrence: RecurrencePreset = .daily
-    @Published var recurringTime: Date = Date().addingTimeInterval(3600)
 
     init(image: NSImage, context: CaptureContext) {
         self.image = image
@@ -97,24 +79,14 @@ final class CaptureDraft: ObservableObject {
 
     var hasURL: Bool { URL(string: urlString)?.scheme != nil }
 
-    /// Resolve the schedule inputs into (kind, fireDate, recurrenceRule).
-    func resolvedSchedule() -> (kind: ScheduleKind, fireDate: Date, rule: String?) {
+    /// Resolve the schedule inputs into (kind, fireDate).
+    func resolvedSchedule() -> (kind: ScheduleKind, fireDate: Date) {
         switch scheduleKind {
         case .relative:
             let fire = Date().addingTimeInterval(TimeInterval(max(1, relativeMinutes) * 60))
-            return (.relative, fire, nil)
+            return (.relative, fire)
         case .absolute:
-            return (.absolute, absoluteDate, nil)
-        case .recurring:
-            let rule: String
-            switch recurrence {
-            case .hourly: rule = "hourly"
-            case .daily:  rule = "daily"
-            case .weekly:
-                let weekday = Calendar.current.component(.weekday, from: recurringTime)
-                rule = "weekly:\(weekday)"
-            }
-            return (.recurring, recurringTime, rule)
+            return (.absolute, absoluteDate)
         }
     }
 
@@ -134,7 +106,6 @@ final class CaptureDraft: ObservableObject {
             note: note.trimmingCharacters(in: .whitespacesAndNewlines),
             scheduleKind: schedule.kind,
             fireDate: schedule.fireDate,
-            recurrenceRule: schedule.rule,
             status: .scheduled
         )
     }

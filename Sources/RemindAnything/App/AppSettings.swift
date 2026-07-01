@@ -13,10 +13,6 @@ final class AppSettings: ObservableObject {
     @Published var windowHotkey: Hotkey { didSet { save(windowHotkey, key: Keys.window); notifyHotkeys() } }
     @Published var screenHotkey: Hotkey { didSet { save(screenHotkey, key: Keys.screen); notifyHotkeys() } }
 
-    @Published var defaultReminderMinutes: Int {
-        didSet { defaults.set(defaultReminderMinutes, forKey: Keys.defaultMinutes) }
-    }
-
     @Published var launchAtLogin: Bool {
         didSet { updateLoginItem(launchAtLogin) }
     }
@@ -28,16 +24,23 @@ final class AppSettings: ObservableObject {
         static let region = "hotkey.region"
         static let window = "hotkey.window"
         static let screen = "hotkey.screen"
-        static let defaultMinutes = "reminder.defaultMinutes"
+        static let didConfigureLoginItem = "loginItem.didConfigureDefault"
     }
 
     private init() {
         self.regionHotkey = AppSettings.load(Keys.region, default: .defaultRegion, defaults: defaults)
         self.windowHotkey = AppSettings.load(Keys.window, default: .defaultWindow, defaults: defaults)
         self.screenHotkey = AppSettings.load(Keys.screen, default: .defaultScreen, defaults: defaults)
-        let minutes = defaults.integer(forKey: Keys.defaultMinutes)
-        self.defaultReminderMinutes = minutes == 0 ? 60 : minutes
-        self.launchAtLogin = (SMAppService.mainApp.status == .enabled)
+
+        // Launch at login defaults to ON for a fresh install so users don't miss
+        // reminders after a reboot; afterwards we honor the user's own choice.
+        let hasConfiguredLoginItem = defaults.bool(forKey: Keys.didConfigureLoginItem)
+        self.launchAtLogin = hasConfiguredLoginItem ? (SMAppService.mainApp.status == .enabled) : true
+
+        if !hasConfiguredLoginItem {
+            defaults.set(true, forKey: Keys.didConfigureLoginItem)
+            updateLoginItem(true)
+        }
     }
 
     // MARK: - Persistence helpers
