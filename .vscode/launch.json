@@ -1,0 +1,24 @@
+{
+  "configurations": [
+    {
+      "type": "swift",
+      "request": "launch",
+      "args": [],
+      "cwd": "${workspaceFolder:remind-anything}",
+      "name": "Debug RemindAnything",
+      "target": "RemindAnything",
+      "configuration": "debug",
+      "preLaunchTask": "swift: Build Debug RemindAnything"
+    },
+    {
+      "type": "swift",
+      "request": "launch",
+      "args": [],
+      "cwd": "${workspaceFolder:remind-anything}",
+      "name": "Release RemindAnything",
+      "target": "RemindAnything",
+      "configuration": "release",
+      "preLaunchTask": "swift: Build Release RemindAnything"
+    }
+  ]
+}

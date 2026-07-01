@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleName</key>
+    <string>Remind Anything</string>
+    <key>CFBundleDisplayName</key>
+    <string>Remind Anything</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.mengzhang.RemindAnything</string>
+    <key>CFBundleExecutable</key>
+    <string>RemindAnything</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0.0</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>14.0</string>
+    <key>LSUIElement</key>
+    <true/>
+    <key>NSHumanReadableCopyright</key>
+    <string>Copyright © 2026 Meng Zhang. All rights reserved.</string>
+    <key>NSAppleEventsUsageDescription</key>
+    <string>Remind Anything reads the active tab's URL and title from your browser so a reminder can reopen the exact page later.</string>
+    <key>NSAccessibilityUsageDescription</key>
+    <string>Remind Anything reads window titles to give your reminders context.</string>
+</dict>
+</plist>
