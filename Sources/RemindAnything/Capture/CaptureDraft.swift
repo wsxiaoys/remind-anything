@@ -20,7 +20,7 @@ enum RelativePreset: String, CaseIterable, Identifiable {
         case .hour3:    return "In 3 hours"
         case .tomorrow: return "Tomorrow"
         case .nextWeek: return "Next week"
-        case .custom:   return "Custom…"
+        case .custom:   return "Pick date & time…"
         }
     }
 
