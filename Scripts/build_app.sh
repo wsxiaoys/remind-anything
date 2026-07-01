@@ -35,8 +35,10 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Resolve a default signing identity when none was passed explicitly.
+# NOTE: we intentionally do NOT use `-v` (valid-only) here: a self-signed dev
+# cert may be untrusted, which is fine for signing and for TCC persistence.
 if [[ -z "${SIGN_IDENTITY}" ]]; then
-  if security find-identity -v -p codesigning 2>/dev/null | grep -q "${DEV_CERT_NAME}"; then
+  if security find-identity -p codesigning 2>/dev/null | grep -q "${DEV_CERT_NAME}"; then
     SIGN_IDENTITY="${DEV_CERT_NAME}"
     echo "▸ Using stable dev certificate \"${DEV_CERT_NAME}\" (permissions persist across rebuilds)."
   else
