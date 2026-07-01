@@ -30,7 +30,7 @@ enum ReminderStatus: String, Codable, CaseIterable, Identifiable {
 
     var label: String {
         switch self {
-        case .inProgress: return "In progress"
+        case .inProgress: return "In Progress"
         case .archived:   return "Archived"
         case .completed:  return "Completed"
         }

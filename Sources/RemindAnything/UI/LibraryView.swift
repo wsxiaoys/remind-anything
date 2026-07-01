@@ -74,6 +74,12 @@ struct LibraryView: View {
         .padding(.top, 8)
     }
 
+    /// True when the user has typed a search query — used to show a
+    /// search-specific empty state instead of the status-based one.
+    private var isSearching: Bool {
+        !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
     @ViewBuilder
     private var emptyState: some View {
         VStack(spacing: 8) {
@@ -82,7 +88,11 @@ struct LibraryView: View {
                 .foregroundStyle(.secondary)
             Text(emptyStateTitle)
                 .foregroundStyle(.secondary)
-            if statusFilter == .inProgress {
+            if isSearching {
+                Text("No matches in \(statusFilter.label).")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            } else if statusFilter == .inProgress {
                 Text("Press ⌥⇧2 to capture a region.")
                     .font(.caption)
                     .foregroundStyle(.tertiary)
@@ -92,6 +102,7 @@ struct LibraryView: View {
     }
 
     private var emptyStateIcon: String {
+        if isSearching { return "magnifyingglass" }
         switch statusFilter {
         case .inProgress: return "bell.slash"
         case .archived:   return "archivebox"
@@ -100,6 +111,7 @@ struct LibraryView: View {
     }
 
     private var emptyStateTitle: String {
+        if isSearching { return "No results" }
         switch statusFilter {
         case .inProgress: return "Nothing in progress"
         case .archived:   return "Nothing archived"
@@ -215,7 +227,7 @@ private struct TabButton: View {
                         Text("\(count)")
                             .font(.caption2)
                             .fontWeight(.semibold)
-                            .foregroundStyle(isSelected ? AnyShapeStyle(Color.accentColor) : AnyShapeStyle(.secondary))
+                            .foregroundStyle(.secondary)
                     }
                 }
                 Rectangle()

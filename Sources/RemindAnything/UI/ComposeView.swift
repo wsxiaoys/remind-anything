@@ -86,6 +86,8 @@ struct ComposeView: View {
                 TextEditor(text: $draft.note)
                     .font(.body)
                     .focused($noteFocused)
+                    .scrollContentBackground(.hidden)
+                    .scrollIndicators(.hidden)
                     .frame(height: 70)
                     .padding(6)
                     .background(Color(nsColor: .textBackgroundColor))
