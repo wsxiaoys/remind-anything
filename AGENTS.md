@@ -1,0 +1,1 @@
+1. If you need user provide feeback on app, you need run Scripts/build_app.sh to create a new distribution under dist/.
