@@ -12,7 +12,7 @@ cask "remind-anything" do
   desc "Capture anything on screen, attach a note, get reminded with context"
   homepage "https://github.com/wsxiaoys/remind-anything"
 
-  depends_on macos: ">= :sonoma" # macOS 14+, matches LSMinimumSystemVersion
+  depends_on macos: :sonoma # macOS 14+, matches LSMinimumSystemVersion
 
   app "Remind Anything.app"
 
