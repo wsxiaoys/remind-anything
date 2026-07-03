@@ -34,9 +34,25 @@ if [[ -z "${TARGET}" || ! -e "${TARGET}" ]]; then
 fi
 
 echo "▸ Submitting ${TARGET} to Apple notary service (profile: ${PROFILE})…"
-xcrun notarytool submit "${TARGET}" \
+# Capture output so we can read the status and submission id. `notarytool
+# submit --wait` exits 0 even when the result is "Invalid", so we must inspect
+# the status ourselves before attempting to staple.
+SUBMIT_OUTPUT="$(xcrun notarytool submit "${TARGET}" \
   --keychain-profile "${PROFILE}" \
-  --wait
+  --wait 2>&1)"
+echo "${SUBMIT_OUTPUT}"
+
+STATUS="$(echo "${SUBMIT_OUTPUT}" | awk -F': ' '/status:/ {s=$2} END {print s}' | tr -d '[:space:]')"
+SUBMISSION_ID="$(echo "${SUBMIT_OUTPUT}" | awk -F': ' '/id:/ {print $2; exit}' | tr -d '[:space:]')"
+
+if [[ "${STATUS}" != "Accepted" ]]; then
+  echo "✗ Notarization did not succeed (status: ${STATUS:-unknown})." >&2
+  if [[ -n "${SUBMISSION_ID}" ]]; then
+    echo "▸ Fetching the notary log for details…" >&2
+    xcrun notarytool log "${SUBMISSION_ID}" --keychain-profile "${PROFILE}" >&2 || true
+  fi
+  exit 1
+fi
 
 echo "▸ Stapling the notarization ticket into ${TARGET}…"
 xcrun stapler staple "${TARGET}"

@@ -60,8 +60,16 @@ cp "${BUILD_DIR}/${APP_NAME}" "${APP_PATH}/Contents/MacOS/${APP_NAME}"
 cp "App/Info.plist" "${APP_PATH}/Contents/Info.plist"
 
 echo "▸ Signing (identity: ${SIGN_IDENTITY})…"
+# A secure timestamp is REQUIRED for notarization but is pointless (and
+# unavailable) for an ad-hoc signature, so only request it for real identities.
+TIMESTAMP_FLAG=(--timestamp)
+if [[ "${SIGN_IDENTITY}" == "-" ]]; then
+  TIMESTAMP_FLAG=(--timestamp=none)
+fi
+
 codesign --force --deep \
   --options runtime \
+  "${TIMESTAMP_FLAG[@]}" \
   --entitlements "App/RemindAnything.entitlements" \
   --sign "${SIGN_IDENTITY}" \
   "${APP_PATH}"
