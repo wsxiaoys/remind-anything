@@ -213,14 +213,65 @@ Built (under `Scripts/`):
 - ✅ `make_dmg.sh` — version-aware DMG packaging.
 - ✅ `notarize.sh` — submit + wait + staple + verify.
 - ✅ `release.sh` — build (signed) → dmg → notarize → staple → print sha256.
-
-Not yet built:
-
-- Optional GitHub Actions workflow triggered on `v*` tags (requires the
-  Developer ID cert + notary credentials stored as encrypted repo secrets).
+- ✅ `.github/workflows/release.yml` — tag-triggered CI release (see §11).
 
 There is **no auto-update** mechanism (Sparkle); updates flow through
 `brew upgrade --cask`.
+
+---
+
+## 11. GitHub Actions release workflow
+
+`.github/workflows/release.yml` runs the whole signed+notarized release on a
+`macos-14` runner whenever you push a `v*` tag. It imports the Developer ID cert
+into a throwaway keychain, stores the notary profile, runs `Scripts/release.sh`,
+then creates a GitHub Release with the stapled DMG.
+
+### 11.1 Export the Developer ID certificate
+
+On the Mac that holds the *Developer ID Application* cert + private key:
+
+1. **Keychain Access** → *login* keychain → *My Certificates*.
+2. Right-click the *Developer ID Application: …* entry → **Export…** → save as
+   `DeveloperID.p12`, and set an export password.
+3. Base64-encode it for the secret:
+
+   ```sh
+   base64 -i DeveloperID.p12 | pbcopy   # now in your clipboard
+   ```
+
+### 11.2 Configure repository secrets
+
+Add these under **Settings → Secrets and variables → Actions → New repository secret**:
+
+| Secret | Value |
+|---|---|
+| `DEVELOPER_ID_CERT_P12_BASE64` | Base64 from step 11.1 |
+| `DEVELOPER_ID_CERT_PASSWORD` | The `.p12` export password |
+| `KEYCHAIN_PASSWORD` | Any throwaway string (a fresh CI keychain password) |
+| `SIGN_IDENTITY` | `Developer ID Application: <Name> (8TV34LSJW3)` |
+| `NOTARY_APPLE_ID` | `meng@tabbyml.com` |
+| `NOTARY_TEAM_ID` | `8TV34LSJW3` |
+| `NOTARY_PASSWORD` | App-specific password (appleid.apple.com → Sign-In & Security) |
+
+> The signing identity's team and `NOTARY_TEAM_ID` **must match**. The
+> app-specific password is *not* your Apple ID password — generate one at
+> <https://appleid.apple.com>.
+
+### 11.3 Cut a release
+
+```sh
+# Bump versions in App/Info.plist first (see §2), commit, then:
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+The workflow's job summary prints the DMG path and its `sha256`. Copy the
+`sha256` into `Casks/remind-anything.rb` (§7) and push your tap.
+
+> **Note:** the workflow only *publishes the release*. Updating the Cask's
+> `version`/`sha256` in your tap is still a manual step (or add a follow-up job
+> that commits to the tap repo with a PAT).
 
 ---
 

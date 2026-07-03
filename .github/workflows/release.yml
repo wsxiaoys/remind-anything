@@ -1,0 +1,112 @@
+name: Release
+
+# Build, sign, notarize, and publish a DMG whenever a v* tag is pushed.
+#
+# Required repository secrets (see docs/publishing.md §11):
+#   DEVELOPER_ID_CERT_P12_BASE64  base64 of the exported Developer ID .p12
+#   DEVELOPER_ID_CERT_PASSWORD    password used when exporting the .p12
+#   KEYCHAIN_PASSWORD             any throwaway password for the CI keychain
+#   SIGN_IDENTITY                 e.g. "Developer ID Application: Name (TEAMID)"
+#   NOTARY_APPLE_ID               Apple ID email used for notarization
+#   NOTARY_TEAM_ID                Developer Team ID (e.g. 8TV34LSJW3)
+#   NOTARY_PASSWORD              app-specific password for the Apple ID
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write # needed to create the GitHub Release
+
+jobs:
+  release:
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Import Developer ID certificate
+        env:
+          CERT_P12_BASE64: ${{ secrets.DEVELOPER_ID_CERT_P12_BASE64 }}
+          CERT_PASSWORD: ${{ secrets.DEVELOPER_ID_CERT_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          set -euo pipefail
+          CERT_PATH="$RUNNER_TEMP/devid.p12"
+          KEYCHAIN_PATH="$RUNNER_TEMP/app-signing.keychain-db"
+
+          echo "$CERT_P12_BASE64" | base64 --decode > "$CERT_PATH"
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          security import "$CERT_PATH" \
+            -P "$CERT_PASSWORD" \
+            -A -t cert -f pkcs12 \
+            -k "$KEYCHAIN_PATH" \
+            -T /usr/bin/codesign
+
+          security set-key-partition-list \
+            -S apple-tool:,apple:,codesign: \
+            -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          # Put the CI keychain first in the search list so codesign & notarytool find it.
+          security list-keychain -d user -s "$KEYCHAIN_PATH" login.keychain-db
+
+          echo "KEYCHAIN_PATH=$KEYCHAIN_PATH" >> "$GITHUB_ENV"
+
+      - name: Store notary credentials
+        env:
+          NOTARY_APPLE_ID: ${{ secrets.NOTARY_APPLE_ID }}
+          NOTARY_TEAM_ID: ${{ secrets.NOTARY_TEAM_ID }}
+          NOTARY_PASSWORD: ${{ secrets.NOTARY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          xcrun notarytool store-credentials "RemindAnything-Notary" \
+            --apple-id "$NOTARY_APPLE_ID" \
+            --team-id "$NOTARY_TEAM_ID" \
+            --password "$NOTARY_PASSWORD" \
+            --keychain "$KEYCHAIN_PATH"
+
+      - name: Install create-dmg
+        run: brew install create-dmg
+
+      - name: Build, sign, package, notarize
+        env:
+          SIGN_IDENTITY: ${{ secrets.SIGN_IDENTITY }}
+        run: |
+          set -euo pipefail
+          Scripts/release.sh --sign "$SIGN_IDENTITY"
+
+      - name: Resolve artifact + checksum
+        id: artifact
+        run: |
+          set -euo pipefail
+          VERSION="$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" App/Info.plist)"
+          DMG_PATH="dist/Remind-Anything-${VERSION}.dmg"
+          SHA256="$(shasum -a 256 "$DMG_PATH" | awk '{print $1}')"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "dmg_path=$DMG_PATH" >> "$GITHUB_OUTPUT"
+          echo "sha256=$SHA256" >> "$GITHUB_OUTPUT"
+          {
+            echo "### Remind Anything ${VERSION}"
+            echo ""
+            echo "- Artifact: \`${DMG_PATH}\`"
+            echo "- sha256: \`${SHA256}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release create "${{ github.ref_name }}" \
+            "${{ steps.artifact.outputs.dmg_path }}" \
+            --title "Remind Anything ${{ steps.artifact.outputs.version }}" \
+            --generate-notes
+
+      - name: Clean up keychain
+        if: always()
+        run: security delete-keychain "$KEYCHAIN_PATH" || true
