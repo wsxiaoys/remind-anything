@@ -131,7 +131,7 @@ shasum -a 256 "dist/Remind-Anything-${VERSION}.dmg"
 ```
 
 Download URL pattern:
-`https://github.com/<owner>/remind-anything/releases/download/v<version>/Remind-Anything-<version>.dmg`
+`https://github.com/wsxiaoys/remind-anything/releases/download/v<version>/Remind-Anything-<version>.dmg`
 
 ---
 
@@ -141,17 +141,19 @@ Fastest route that works immediately (no notability review needed).
 
 1. Create a repo named `homebrew-tap` under your account (the `homebrew-` prefix
    is what makes `brew tap` recognize it).
-2. Add `Casks/remind-anything.rb`:
+2. Copy [`Casks/remind-anything.rb`](../Casks/remind-anything.rb) from this repo
+   into `Casks/remind-anything.rb` in the tap, bumping `version` + `sha256` on
+   each release (both printed by `Scripts/release.sh`). The current file:
 
 ```ruby
 cask "remind-anything" do
   version "1.0.0"
-  sha256 "PASTE_SHA256_HERE"
+  sha256 "ea464b8a0af15087a8e1b87dfd50dba9cf013709fcca1870efa8e08c85e224c5"
 
-  url "https://github.com/<owner>/remind-anything/releases/download/v#{version}/Remind-Anything-#{version}.dmg"
+  url "https://github.com/wsxiaoys/remind-anything/releases/download/v#{version}/Remind-Anything-#{version}.dmg"
   name "Remind Anything"
   desc "Capture anything on screen, attach a note, get reminded with context"
-  homepage "https://github.com/<owner>/remind-anything"
+  homepage "https://github.com/wsxiaoys/remind-anything"
 
   depends_on macos: ">= :sonoma" # macOS 14+, matches LSMinimumSystemVersion
 
@@ -167,18 +169,18 @@ end
 3. Install / test locally:
 
 ```sh
-brew tap <owner>/tap
-brew install --cask <owner>/tap/remind-anything
+brew tap wsxiaoys/tap
+brew install --cask wsxiaoys/tap/remind-anything
 
 # Audit the cask before publishing changes:
-brew audit --cask --new <owner>/tap/remind-anything
-brew style <owner>/tap/remind-anything
+brew audit --cask --new wsxiaoys/tap/remind-anything
+brew style wsxiaoys/tap/remind-anything
 ```
 
 Users then install with:
 
 ```sh
-brew install --cask <owner>/tap/remind-anything
+brew install --cask wsxiaoys/tap/remind-anything
 ```
 
 ---
