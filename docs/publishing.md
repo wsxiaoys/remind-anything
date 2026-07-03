@@ -28,9 +28,14 @@ flowchart TD
     H --> I[brew install --cask you/tap/remind-anything]
 ```
 
-The current `Scripts/build_app.sh` already produces a **hardened-runtime** bundle
-and accepts `--sign "Developer ID Application: …"`. The remaining pieces to build
-are: DMG packaging, notarization, release upload, and the Cask formula.
+The scripts below automate everything up to the GitHub Release:
+
+| Script | Purpose |
+|---|---|
+| `Scripts/build_app.sh --sign …` | Build + Developer ID sign (hardened runtime). |
+| `Scripts/make_dmg.sh` | Version-aware DMG packaging (via `create-dmg`). |
+| `Scripts/notarize.sh` | `notarytool submit --wait` → staple → Gatekeeper check. |
+| `Scripts/release.sh --sign …` | Runs all of the above, then prints the Cask `sha256`. |
 
 ---
 
@@ -40,7 +45,7 @@ are: DMG packaging, notarization, release upload, and the Cask formula.
 |---|---|
 | **Apple Developer Program** ($99/yr) | Enroll at <https://developer.apple.com/programs/> |
 | **Developer ID Application certificate** | Xcode → Settings → Accounts → Manage Certificates → `+` → *Developer ID Application*. Verify with `security find-identity -p codesigning`. |
-| **Notary credentials stored in keychain** | `xcrun notarytool store-credentials "RemindAnything-Notary" --apple-id "you@example.com" --team-id "TEAMID"` (uses an app-specific password) — or use an App Store Connect API key. |
+| **Notary credentials stored in keychain** | `xcrun notarytool store-credentials "RemindAnything-Notary" --apple-id "you@example.com" --team-id "TEAMID"` (uses an app-specific password) — or use an App Store Connect API key. ✅ Profile `RemindAnything-Notary` is already stored (team `8TV34LSJW3`). |
 | **`create-dmg`** | `brew install create-dmg` |
 
 Record your Team ID and the exact identity string, e.g.
@@ -77,40 +82,24 @@ codesign -dv --verbose=4 "dist/Remind Anything.app" 2>&1 | grep -E 'Authority|fl
 
 ## 4. Package the DMG
 
-Produce `dist/Remind-Anything-<version>.dmg` with a drag-to-Applications layout:
+Produce `dist/Remind-Anything-<version>.dmg` (version read from `App/Info.plist`)
+with a drag-to-Applications layout:
 
 ```sh
-create-dmg \
-  --volname "Remind Anything" \
-  --app-drop-link 480 170 \
-  --icon "Remind Anything.app" 160 170 \
-  --window-size 640 360 \
-  "dist/Remind-Anything-1.0.0.dmg" \
-  "dist/Remind Anything.app"
+Scripts/make_dmg.sh
 ```
-
-> **TODO (scripts):** wrap this in `Scripts/make_dmg.sh` that reads the version
-> from `App/Info.plist` so the filename stays in sync.
 
 ---
 
 ## 5. Notarize + staple
 
 ```sh
-xcrun notarytool submit "dist/Remind-Anything-1.0.0.dmg" \
-  --keychain-profile "RemindAnything-Notary" \
-  --wait
-
-# On "Accepted", staple the ticket into the DMG so it validates offline:
-xcrun stapler staple "dist/Remind-Anything-1.0.0.dmg"
+# Defaults to the newest dist/Remind-Anything-*.dmg and profile "RemindAnything-Notary":
+Scripts/notarize.sh
 ```
 
-Validate the end-user experience:
-
-```sh
-spctl -a -t open --context context:primary-signature -v "dist/Remind-Anything-1.0.0.dmg"
-# expected: source=Notarized Developer ID  ...  accepted
-```
+This submits with `notarytool --wait`, staples the ticket into the DMG, and runs
+the Gatekeeper check (expected: `source=Notarized Developer ID … accepted`).
 
 If notarization fails, fetch the log with the submission ID:
 
@@ -121,7 +110,8 @@ xcrun notarytool log <submission-id> --keychain-profile "RemindAnything-Notary"
 Common causes: a nested binary not signed with the hardened runtime, or missing
 `--options runtime` (already handled by `build_app.sh`).
 
-> **TODO (scripts):** `Scripts/notarize.sh <dmg>` for submit + wait + staple + verify.
+> **Shortcut:** `Scripts/release.sh --sign "Developer ID Application: … (TEAMID)"`
+> runs steps 3–5 and prints the `sha256` for the Cask in one go.
 
 ---
 
@@ -216,13 +206,16 @@ PR against `Homebrew/homebrew-cask`. Until eligible, keep the personal tap.
 
 ---
 
-## 10. Follow-up automation (not yet built)
+## 10. Follow-up automation
 
-Scripts to add under `Scripts/` to make releases one command:
+Built (under `Scripts/`):
 
-- `make_dmg.sh` — version-aware DMG packaging.
-- `notarize.sh` — submit + wait + staple + verify.
-- `release.sh` — build (signed) → dmg → notarize → staple → `gh release` → print sha256.
+- ✅ `make_dmg.sh` — version-aware DMG packaging.
+- ✅ `notarize.sh` — submit + wait + staple + verify.
+- ✅ `release.sh` — build (signed) → dmg → notarize → staple → print sha256.
+
+Not yet built:
+
 - Optional GitHub Actions workflow triggered on `v*` tags (requires the
   Developer ID cert + notary credentials stored as encrypted repo secrets).
 
